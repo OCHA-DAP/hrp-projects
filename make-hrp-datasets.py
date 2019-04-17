@@ -1,15 +1,26 @@
+import config
 import ckanapi, json, pprint, urllib
 
 CKAN_PATTERN = "hrp-projects-{iso3}"
 HXL_PATTERN = "https://proxy.hxlstandard.org/data/93fb54.csv?url={api_url}"
 API_PATTERN = "https://api.hpc.tools/v2/public/project/search?planCodes=H{iso3}{year}&excludeFields=locations,governingEntities,targets"
 
+print(config.CONFIG)
+
+# Open a CKAN API connection
+ckan = ckanapi.RemoteCKAN(config.CONFIG['ckanurl'], apikey=config.CONFIG['apikey'], user_agent=config.CONFIG.get('user_agent', None))
+
+# Load the JSON config
 with open("plan-data.json", "r") as input:
     plans = json.load(input);
 
+# Iterate through the plan configurations
 for plan in plans:
+
+    # CKAN dataset name
     dataset_id = CKAN_PATTERN.format(iso3=plan["iso3"])
 
+    # Fill in full CKAN package except for resources
     package = {
         "data_update_frequency": "0",
         "license_title": "Creative Commons Attribution for Intergovernmental Organisations",
@@ -24,34 +35,17 @@ for plan in plans:
         "dataset_preview": "first_resource",
         "dataset_source": "HPC Tools",
         "tags": [
-            {
-                "name": "3w"
-            },
-            {
-                "name": "4w"
-            },
-            {
-                "name": "finance"
-            },
-            {
-                "name": "hrp"
-            },
-            {
-                "name": "hxl"
-            },
-            {
-                "name": "projects"
-            }
+            {"name": "3w"},
+            {"name": "4w"},
+            {"name": "finance"},
+            {"name": "hxl"},
+            {"name": "projects"}
         ],
         "groups": [
-            {
-                "name": plan["iso3"]
-            }
+            {"name": plan["iso3"]}
         ],
         "has_quickcharts": True,
-        "organization": {
-            "name": "ocha-fts",
-        },
+        "owner_org": "ocha-fts",
         "name": dataset_id,
         "notes": "Projects proposed, in progress, or completed as part of the annual {name} Humanitarian Response Plans (HRPs). The original data is available on https://hpc.tools\r\n\r\nNote that some projects are not publicly listed, due to security or personal-privacy concerns.".format(
             name=plan["name"]
@@ -61,6 +55,7 @@ for plan in plans:
         )
     }
 
+    # Add two resources (HXL and JSON) for each year specified
     for year in sorted(plan["years"], reverse=True):
         api_url = API_PATTERN.format(
             iso3=plan["iso3"].upper(),
@@ -68,6 +63,10 @@ for plan in plans:
         )
         hxl_url = HXL_PATTERN.format(api_url=urllib.parse.quote_plus(api_url))
         resource = {
+            "name": "{year}-{iso3}-hrp-projects.csv".format(
+                year=year,
+                iso3=plan["iso3"]
+            ),
             "description": "{year} HRP projects for {name}: simplified CSV data, with HXL hashtags.".format(
                 name=plan["name"],
                 year=year
@@ -80,6 +79,10 @@ for plan in plans:
         }
         package["resources"].append(resource)
         resource = {
+            "name": "{year}-{iso3}-hrp-projects.json".format(
+                year=year,
+                iso3=plan["iso3"]
+            ),
             "description": "{year} HRP projects for {name}: original JSON data from https://hpc.tools".format(
                 name=plan["name"],
                 year=year
@@ -91,4 +94,12 @@ for plan in plans:
             "url_type": "api"
         }
         package["resources"].append(resource)
-    pprint.pprint(package)
+
+    # see if the package already exists on CKAN
+    try:
+        result = ckan.action.package_show(id=dataset_id)
+        ckan.call_action('package_update', package)
+        print("Updated {}...".format(dataset_id))
+    except:
+        ckan.call_action('package_create', package)
+        print("Created {}...".format(dataset_id))
