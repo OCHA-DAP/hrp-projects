@@ -1,0 +1,72 @@
+[
+    {
+        "iso3": "cmr",
+        "name": "Cameroon",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "tcd",
+        "name": "Chad",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "hti",
+        "name": "Haiti",
+        "years": [2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "irq",
+        "name": "Iraq",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "lby",
+        "name": "Libya",
+        "years": [2017, 2018, 2019]
+    },
+    {
+        "iso3": "mli",
+        "name": "Mali",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "moz",
+        "name": "Mozambique",
+        "years": [2019]
+    },
+    {
+        "iso3": "ner",
+        "name": "Niger",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "nga",
+        "name": "Nigeria",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "pse",
+        "name": "occupied Palestinian territory",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "som",
+        "name": "Somalia",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "ssd",
+        "name": "South Sudan",
+        "years": [2015, 2016, 2017, 2018, 2019]
+    },
+    {
+        "iso3": "syr",
+        "name": "Syrian Arab Republic",
+        "years": [2015, 2016, 2017, 2019]
+    },
+    {
+        "iso3": "ukr",
+        "name": "Ukraine",
+        "years": [2015, 2017, 2018, 2019]
+    }
+]
