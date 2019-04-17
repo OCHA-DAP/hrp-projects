@@ -1,0 +1,8 @@
+# Copy this file to config.py, and fill in the values below
+
+CONFIG = {
+    'creator': '<CKAN USERNAME>', # example: 'janesmith'
+    'ckanurl': 'https://data.humdata.org', # https://test-data.humdata.org for testing
+    'apikey': '<CKAN USER API KEY>', # example: '00000000-aaaa-1111-bbbb-222222cccccc'
+    'user_agent': '<HTTP USER AGENT>' # if needed for access
+}
