@@ -26,7 +26,8 @@ up a dedicated Python3 virtual environment for running the script):
 
 After running this script, it will be necessary to set up Quick Charts
 manually for one of the datasets, then to use the separate
-add-quick-charts script to copy that configuration to the other datasets.
+[add-quick-charts](https://github.com/OCHA-DAP/add-quick-charts)
+script to copy that configuration to the other datasets.
 
 # Requirements
 
