@@ -29,8 +29,9 @@ manually for one of the datasets, then to use the separate
 [add-quick-charts](https://github.com/OCHA-DAP/add-quick-charts)
 script to copy that configuration to the other datasets.
 
-*Pattern:* "``^hrp-projects-[A-Z]{3}$``"
-*Org:* "``ocha-fts``"
+**Pattern:** "``^hrp-projects-[A-Z]{3}$``"
+
+**Org:** "``ocha-fts``"
 
 # Requirements
 
