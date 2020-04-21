@@ -1,5 +1,5 @@
 import config
-import ckanapi, json, logging, requests, urllib
+import ckanapi, datetime, json, logging, requests, urllib
 
 PLANS_URL = "https://api.hpc.tools/v2/public/plan"
 CKAN_PATTERN = "hrp-projects-{iso3}"
@@ -11,9 +11,9 @@ logger = logging.getLogger("HPC projects")
 
 
 
-#
+########################################################################
 # Global variables
-#
+########################################################################
 
 plans_data = dict()
 """ Indexed by ISO3 code """
@@ -21,19 +21,22 @@ plans_data = dict()
 countries_data = dict()
 """ Information about countries found """
 
-# Open a CKAN API connection
-ckan = ckanapi.RemoteCKAN(config.CONFIG['ckanurl'], apikey=config.CONFIG['apikey'], user_agent=config.CONFIG.get('user_agent', None))
+dataset_date = "01/01/2015-12/31/{}".format(datetime.date.today().year)
+""" The dataset goes to the end of the current year """
 
 
 
-#
+########################################################################
 # Functions
-#
+########################################################################
 
 def scan_plans ():
     """ Scan all of the plans current on hpc.tools and sort into countries
     Include only plans from 2015 or later
+
+    Side effect: Uses global variables plans_data and countries_data
     """
+
     with requests.get(PLANS_URL) as response:
         data = response.json()['data']
         for plan in data:
@@ -73,10 +76,10 @@ def scan_plans ():
             })
 
 
-def save_dataset (iso3, plans):
+def make_dataset (iso3, plans):
     """ Create or replace the HDX dataset for the country """
+
     dataset_id = CKAN_PATTERN.format(iso3=iso3.lower())
-    logger.info(dataset_id)
     country_name = countries_data[iso3]
 
     # Fill in full CKAN package except for resources
@@ -85,7 +88,7 @@ def save_dataset (iso3, plans):
         "license_title": "Creative Commons Attribution for Intergovernmental Organisations",
         "maintainer": "7ae95211-71dd-484e-8538-2c625315eb56",
         "private": False,
-        "dataset_date": "01/01/2017-12/31/2020",
+        "dataset_date": dataset_date,
         "caveats": "Includes only projects registered as part of the Humanitarian Programme Cycle. Some projects are excluded for protection or personal-privacy reasons.",
         "subnational": "1",
         "methodology": "Registry",
@@ -140,21 +143,28 @@ def save_dataset (iso3, plans):
         }
         package["resources"].append(resource)
 
-    # Create or update on HDX
+    return package
+
+
+def save_dataset (ckan, package):
+    """ Create or update the dataset on HDX """
     try:
-        result = ckan.action.package_show(id=dataset_id)
+        result = ckan.action.package_show(id=package['name'])
         ckan.call_action('package_update', package)
-        logger.info("Updated %s...", dataset_id)
+        logger.info("Updated %s...", package['name'])
     except:
         ckan.call_action('package_create', package)
-        logger.info("Created %s...", dataset_id)
+        logger.info("Created %s...", package['name'])
 
 
 
-#
+########################################################################
 # Top level
-#
+########################################################################
         
+# Open a CKAN API connection
+ckan = ckanapi.RemoteCKAN(config.CONFIG['ckanurl'], apikey=config.CONFIG['apikey'], user_agent=config.CONFIG.get('user_agent', None))
+
 # Scan all the plans current on hpc.tools
 logger.info("Scanning plans from HPC.tools")
 scan_plans()
@@ -162,7 +172,8 @@ scan_plans()
 # Iterate through the countries with plans
 for iso3 in plans_data:
     logger.info("Creating dataset for %s", iso3)
-    save_dataset(iso3, plans_data[iso3])
+    package = make_dataset(iso3, plans_data[iso3])
+    save_dataset(ckan, package)
 
 exit(0)
     
