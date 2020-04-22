@@ -97,6 +97,18 @@ def make_dataset (iso3, plans):
         "dataset_preview": "first_resource",
         "dataset_source": "HPC Tools",
         "tags": [
+            {
+                "vocabulary_id": "Topics",
+                "name": "activities - projects",
+            },
+            {
+                "vocabulary_id": "Topics",
+                "name": "hxl",
+            },
+            {
+                "vocabulary_id": "Topics",
+                "name": "who is doing what and where - 3w - 4w - 5w",
+            },
         ],
         "groups": [
             {"name": iso3}
