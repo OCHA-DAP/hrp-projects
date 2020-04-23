@@ -22,20 +22,24 @@ up a dedicated Python3 virtual environment for running the script):
     $ vi config.py
     $ make run
 
-# Adding Quick Charts
+# Quick Charts
 
-After running this script, it will be necessary to set up Quick Charts
-manually for one of the datasets, then to use the separate
+The script will default Quick Sets to all datasets. If you want to
+change the Quick Charts, you can set up one model the way you want,
+then use the separate
 [add-quick-charts](https://github.com/OCHA-DAP/add-quick-charts)
-script to copy that configuration to the other datasets.
+script to propagage the change, with the following parameters.
 
-**Pattern:** "``^hrp-projects-[A-Z]{3}$``"
+**Pattern:** "``^hrp-projects-[a-Z]{3}$``"
 
 **Org:** "``ocha-fts``"
 
+**Model:** the dataset ID of the model dataset (e.g. "``hrp-projects-nga``")
+
 # Requirements
 
-This script requires Python3, and the ckanapi and requests packages.
+This script requires Python3, and the ckanapi and requests
+packages. See ``requirements.txt`` for any recent changes.
 
 # License
 

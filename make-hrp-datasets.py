@@ -1,8 +1,13 @@
+""" Create or update HRP projects datasets for HDX
+
+Requires Python3
+"""
+
 import config
 import ckanapi, datetime, json, logging, re, requests, urllib
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("HPC projects")
+logger = logging.getLogger("make-hrp-datasets")
 
 
 
@@ -98,6 +103,8 @@ def scan_plans ():
 def make_dataset (iso3, plans):
     """ Create or replace the HDX dataset for the country """
 
+    logger.info("Creating dataset for %s", iso3)
+
     dataset_id = CKAN_PATTERN.format(iso3=iso3.lower())
     country_name = re.sub(", .*$", "", countries_data[iso3])
 
@@ -190,6 +197,22 @@ def save_dataset (ckan, package):
 def add_quickcharts (ckan, package_id):
     package = ckan.action.package_show(id=package_id)
     resource_id = package['resources'][0]['id']
+
+    # Check if there's an existing view to update
+    # This should never happen, since all resources are recreated,
+    # but if the script changes in the future, this will protect
+    # us against surprises
+    views = ckan.action.resource_view_list(id=resource_id)
+    for view in views:
+        if view.get("view_type") == "hdx_hxl_preview":
+            logger.info("Updating existing Quick Charts view for %s", package_id)
+            view["hxl_preview_config"] = config.CONFIG['quickcharts_config']
+            ckan.call_action("resource_view_update", view)
+            return
+        
+    # Need to create a new view
+    # This should always be the case right now
+    logger.info("Adding new Quick Charts view for %s", package_id)
     view = {
         "description": "",
         "title": "Quick Charts",
@@ -214,10 +237,8 @@ scan_plans()
 
 # Iterate through the countries with plans
 for iso3 in plans_data:
-    logger.info("Creating dataset for %s", iso3)
     package = make_dataset(iso3, plans_data[iso3])
     save_dataset(ckan, package)
-    logger.info("Adding Quick Charts for %s", package['name'])
     add_quickcharts(ckan, package['name'])
 
 exit(0)
