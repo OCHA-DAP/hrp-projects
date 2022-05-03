@@ -22,5 +22,8 @@ build-venv: $(VENV)
 $(VENV): requirements.txt
 	rm -rf venv && python3 -m venv venv && . $(VENV) && pip install -r requirements.txt
 
+clean:
+	rm -rf venv
+
 push:
 	git push origin master
