@@ -32,7 +32,7 @@ plans_data = dict()
 countries_data = dict()
 """ Information about countries found """
 
-dataset_date = "01/01/{}-12/31/{}".format(config.CONFIG['cutoff_year'], datetime.date.today().year)
+dataset_date = "[{}-01-01T00:00:00 TO *]".format(config.CONFIG['cutoff_year'], datetime.date.today().year)
 """ The dataset goes to the end of the current year """
 
 
@@ -151,7 +151,7 @@ def make_dataset (iso3, plans):
     }
 
     # Add two resources (HXL and JSON) for each plan specified
-    for plan in reversed(plans):
+    for plan in sorted(plans, key=lambda plan: plan["start"], reverse=True):
         api_url = API_PATTERN.format(code=plan['code'])
         hxl_url = HXL_PATTERN.format(api_url=urllib.parse.quote_plus(api_url))
         resource = {
