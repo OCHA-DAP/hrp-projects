@@ -125,7 +125,7 @@ def make_dataset (iso3, plans):
         "tags": [
             {
                 "vocabulary_id": "b891512e-9516-4bf5-962a-7a289772a2a1",
-                "name": "activities - projects",
+                "name": "humanitarian response plan-hrp",
             },
             {
                 "vocabulary_id": "b891512e-9516-4bf5-962a-7a289772a2a1",
@@ -133,7 +133,7 @@ def make_dataset (iso3, plans):
             },
             {
                 "vocabulary_id": "b891512e-9516-4bf5-962a-7a289772a2a1",
-                "name": "who is doing what and where - 3w - 4w - 5w",
+                "name": "who is doing what and where-3w-4w-5w",
             },
         ],
         "groups": [
