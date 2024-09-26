@@ -1,4 +1,5 @@
 wheel
 ckanapi
+ckancrawler
 requests
 

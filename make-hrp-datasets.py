@@ -4,7 +4,7 @@ Requires Python3
 """
 
 import config
-import ckanapi, datetime, json, logging, re, requests, urllib
+import ckanapi, ckancrawler, datetime, json, logging, re, requests, urllib, sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("make-hrp-datasets")
@@ -15,22 +15,16 @@ logger = logging.getLogger("make-hrp-datasets")
 # Constants
 ########################################################################
 
-PLANS_URL = "https://api.hpc.tools/v2/public/plan"
 CKAN_PATTERN = "hrp-projects-{iso3}"
-HXL_PATTERN = "https://proxy.hxlstandard.org/data/93fb54.csv?url={api_url}"
-API_PATTERN = "https://api.hpc.tools/v2/public/project/search?planCodes={code}&excludeFields=locations,governingEntities,targets&limit=100000"
 
+HXL_PATTERN = "https://proxy.hxlstandard.org/data/download/{code}-{iso3}-projects.csv?url={api_url}&tagger-match-all=on&tagger-01-header=name&tagger-01-tag=%23activity%2Bname&tagger-02-header=versioncode&tagger-02-tag=%23activity%2Bcode%2Bv_hpc&tagger-03-header=currentrequestedfunds&tagger-03-tag=%23value%2Brequested%2Busd&tagger-05-header=objective&tagger-05-tag=%23description%2Bobjective&tagger-06-header=partners&tagger-06-tag=%23org%2Bimpl%2Bname%2Blist&tagger-07-header=startdate&tagger-07-tag=%23date%2Bstart&tagger-08-header=enddate&tagger-08-tag=%23date%2Bend&tagger-09-header=governingEntities&tagger-09-tag=%23sector%2Bcluster%2Blocal%2Bname&tagger-17-header=globalclusters&tagger-17-tag=%23sector%2Bcluster%2Bglobal%2Bname&tagger-18-header=organizations&tagger-18-tag=%23org%2Bprog%2Bname&tagger-19-header=plans&tagger-19-tag=%23response%2Bplan%2Bname&header-row=1&filter01=cut&cut-skip-untagged01=on&filter02=add&add-tag02=%23response%2Bplan%2Bcode&add-value02=%7B%7B%23response%2Bplan%2Bname%7D%7D&add-header02=Response+plan+code&filter03=jsonpath&jsonpath-path03=$%5B0%5D.name&jsonpath-patterns03=%23*%2Bname&filter04=jsonpath&jsonpath-path04=$%5B0%5D.code&jsonpath-patterns04=%23*%2Bcode&filter05=clean&clean-date-tags05=%23date&_gl=1*1pie5e1*_ga*MTI1MTE3OTIzNy4xNjk1OTA2MTk3*_ga_E60ZNX2F68*MTY5NjUxMTk5Mi43LjEuMTY5NjUxMjAwMC41Mi4wLjA."
+
+API_PATTERN = "https://api.hpc.tools/v2/public/project/search?planCodes={code}&excludeFields=location,governingEntities,targets&limit=100000"
 
 
 ########################################################################
 # Global variables
 ########################################################################
-
-plans_data = dict()
-""" Indexed by ISO3 code """
-
-countries_data = dict()
-""" Information about countries found """
 
 dataset_date = "[{}-01-01T00:00:00 TO *]".format(config.CONFIG['cutoff_year'], datetime.date.today().year)
 """ The dataset goes to the end of the current year """
@@ -41,72 +35,25 @@ dataset_date = "[{}-01-01T00:00:00 TO *]".format(config.CONFIG['cutoff_year'], d
 # Functions
 ########################################################################
 
-def scan_plans ():
-    """ Scan all of the plans current on hpc.tools and sort into countries
-    Include only plans from config.CONFIG['cutoff_year'] or later
+def get_existing_packages(crawler):
+    """ Read a dict of existing packages """
 
-    Side effect: Uses global variables plans_data and countries_data
-    """
+    logger.info("Reading existing packages")
 
-    with requests.get(PLANS_URL) as response:
-        data = response.json()['data']
-        for plan in data:
+    packages = {}
 
-            plan_code = plan['planVersion']['code']
+    for package in crawler.packages(fq='organization:ocha-fts'):
+        name = package['name']
+        if re.match(r'^hrp-projects-[a-z]{3}$', name):
+            packages[name] = package
 
-            # skip if it's not an HPC project
-            # if not plan['planVersion'].get('isForHPCProjects'):
-            #     logger.info("Skipping %s (not HPC)", plan_code)
-            #     continue
+    return packages
 
-            # skip if there's no country ISO3
-            iso3 = None
-            for location in plan["locations"]:
-                if location.get("adminLevel") == 0:
-                    iso3 = location.get("iso3")
-                    if iso3 not in countries_data:
-                        countries_data[iso3] = location.get("name")
-                    break
-            if iso3 is None:
-                logger.info("Skipping %s (no country code)", plan_code)
-                continue
-
-            # skip if it's from before the cutoff year
-            has_recent = False
-            for year in plan["years"]:
-                if "year" in year and int(year["year"]) >= config.CONFIG['cutoff_year']:
-                    has_recent = True
-            if not has_recent:
-                logger.info("Skipping %s (before %d)", plan_code, config.CONFIG['cutoff_year'])
-                continue
-
-            # skip if it doesn't have any projects
-            with requests.get(API_PATTERN.format(code=plan_code)) as response:
-                logger.info("Checking projects for %s...", plan_code)
-                data = response.json()
-                if len(data['data']['results']) < 1:
-                    logger.info("Skipping %s (no projects)", plan_code)
-                    continue
-
-            # OK, this plan is a keeper
-            if iso3 not in plans_data:
-                plans_data[iso3] = list()
-            plans_data[iso3].append({
-                "code": plan_code,
-                "name": plan['planVersion'].get('name'),
-                "start": plan['planVersion'].get('startDate'),
-                "end": plan['planVersion'].get('endDate'),
-                "type": plan['categories'][0].get('name'),
-            })
-
-
-def make_dataset (iso3, plans):
+def make_dataset (iso3, plans, country_name):
     """ Create or replace the HDX dataset for the country """
 
-    logger.info("Creating dataset for %s", iso3)
-
     dataset_id = CKAN_PATTERN.format(iso3=iso3.lower())
-    country_name = re.sub(", .*$", "", countries_data[iso3])
+    country_name = re.sub(", .*$", "", country_name) # remove any extra stuff
 
     # Fill in full CKAN package except for resources
     package = {
@@ -115,8 +62,8 @@ def make_dataset (iso3, plans):
         "maintainer": "7ae95211-71dd-484e-8538-2c625315eb56",
         "private": False,
         "dataset_date": dataset_date,
-        "caveats": "Includes only projects registered as part of the Humanitarian Programme Cycle. Some projects are excluded for protection or personal-privacy reasons.",
-        "subnational": "1",
+        "caveats": "1. Includes only projects registered as part of the Humanitarian Programme Cycle.\r\n2. Some projects are excluded for protection or personal-privacy reasons.\r\n3. For multi-country response plans, _all_ projects are included, and some might not apply to {name}.".format(name=country_name),
+        "subnational": "0",
         "methodology": "Registry",
         "license_id": "cc-by-igo",
         "resources": [],
@@ -142,7 +89,7 @@ def make_dataset (iso3, plans):
         "has_quickcharts": True,
         "owner_org": "ocha-fts",
         "name": dataset_id,
-        "notes": "Projects proposed, in progress, or completed as part of the annual {name} Humanitarian Response Plans (HRPs) or other Humanitarian Programme Cycle plans. The original data is available on https://hpc.tools\r\n\r\nNote that some projects are not publicly listed, due to security or personal-privacy concerns.".format(
+        "notes": "Projects proposed, in progress, or completed as part of the annual {name} Humanitarian Response Plans (HRPs) or other Humanitarian Programme Cycle plans. The original data is available on https://hpc.tools\r\n\r\n**Important:** some projects in {name} might be missing, and others might not apply specifically to {name}. See _Caveats_ under the _Metadata_ tab.".format(
             name=country_name
         ),
         "title": "Humanitarian Response Plan projects for {name}".format(
@@ -153,9 +100,9 @@ def make_dataset (iso3, plans):
     # Add two resources (HXL and JSON) for each plan specified
     for plan in sorted(plans, key=lambda plan: plan["start"], reverse=True):
         api_url = API_PATTERN.format(code=plan['code'])
-        hxl_url = HXL_PATTERN.format(api_url=urllib.parse.quote_plus(api_url))
+        hxl_url = HXL_PATTERN.format(code=plan['code'].lower(), iso3=iso3.lower(), api_url=urllib.parse.quote_plus(api_url))
         resource = {
-            "name": "{code}-hrp-projects.csv".format(code=plan['code']),
+            "name": "{code}-{iso3}-projects.csv".format(code=plan['code'].lower(), iso3=iso3.lower()),
             "description": "Projects for {name} ({type}): simplified CSV data, with HXL hashtags.".format(
                 name=plan["name"],
                 type=plan["type"],
@@ -168,7 +115,7 @@ def make_dataset (iso3, plans):
         }
         package["resources"].append(resource)
         resource = {
-            "name": "{code}-hrp-projects.json".format(code=plan['code']),
+            "name": "{code}-{iso3}-projects.json".format(code=plan['code'].lower(), iso3=iso3.lower()),
             "description": "Projects for {name} ({type}): original JSON, from HPC.tools".format(
                 name=plan["name"],
                 type=plan["type"],
@@ -184,15 +131,35 @@ def make_dataset (iso3, plans):
     return package
 
 
-def save_dataset (ckan, package):
+def save_dataset (ckan, package, existing_package):
     """ Create or update the dataset on HDX """
-    try:
-        result = ckan.action.package_show(id=package['name'])
-        ckan.call_action('package_update', package)
-        logger.info("Updated %s...", package['name'])
-    except:
+
+    # easy case: the dataset doesn't exist yet
+    if existing_package is None:
+        logger.info("Trying to create package %s", package['name'])
         ckan.call_action('package_create', package)
-        logger.info("Created %s...", package['name'])
+        add_quickcharts(crawler.ckan, package['name'])
+        logger.info("Created new dataset %s", package['name'])
+        return
+
+    # compare resources
+    existing_resources = set()
+    new_resources = set()
+    for resource in package['resources']:
+        existing_resources.add(resource['url'])
+    for resource in existing_package['resources']:
+        new_resources.add(resource['url'])
+
+    # if no change, then no update
+    if existing_resources == new_resources:
+        logger.info("No changes to dataset %s", package['name'])
+        return
+
+    # otherwise, update the existing package with the new resources
+    existing_package['resources'] = package['resources']
+    ckan.call_action('package_update', existing_package)
+    logger.info("Updated existing dataset %s", package['name'])
+    
 
 def add_quickcharts (ckan, package_id):
     package = ckan.action.package_show(id=package_id)
@@ -222,24 +189,42 @@ def add_quickcharts (ckan, package_id):
     }
     ckan.call_action('resource_view_create', view)
 
-
 
 ########################################################################
 # Top level
 ########################################################################
-        
-# Open a CKAN API connection
-ckan = ckanapi.RemoteCKAN(config.CONFIG['ckanurl'], apikey=config.CONFIG['apikey'], user_agent=config.CONFIG.get('user_agent', None))
 
-# Scan all the plans current on hpc.tools
-logger.info("Scanning plans from HPC.tools")
-scan_plans()
+if len(sys.argv) != 2:
+    print("Usage: make-hrp-datasets.py <json-scan-file>")
+    sys.exit(2)
+
+with open(sys.argv[1], 'r') as input:
+    data = json.load(input)
+
+# Open a CKAN API connection
+crawler = ckancrawler.Crawler(config.CONFIG['ckanurl'], apikey=config.CONFIG['apikey'], user_agent=config.CONFIG.get('user_agent', None), delay=0)
+
+# grab existing packages
+existing_packages = get_existing_packages(crawler)
+print([key for key in existing_packages], file=sys.stderr)
 
 # Iterate through the countries with plans
-for iso3 in plans_data:
-    package = make_dataset(iso3, plans_data[iso3])
-    save_dataset(ckan, package)
-    add_quickcharts(ckan, package['name'])
+for iso3 in data['plans']:
+
+    # make a new template package for comparison
+    package = make_dataset(iso3, data['plans'][iso3], data['countries'][iso3])
+
+    # create or update only if appropriate
+    save_dataset(crawler.ckan, package, existing_packages.get(package['name']))
+
+    # remove the package from the existing list (it's updated)
+    if package['name'] in existing_packages:
+        del existing_packages[package['name']]
+
+# Clean up empty datasets
+for name in existing_packages:
+    crawler.ckan.action.package_delete(id=name)
+    logger.info("Deleted stale dataset %s", name)
 
 exit(0)
-    
+

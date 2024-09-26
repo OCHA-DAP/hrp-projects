@@ -14,8 +14,19 @@
 VENV=venv/bin/activate
 SCRIPT=make-hrp-datasets.py
 
+SCANNED_DATA=output/hrp-scan.json
+
 run: $(VENV)
 	. $(VENV) && python $(SCRIPT)
+
+update-subnational: $(VENV)
+	. $(VENV) && python update-subnational-flags.py
+
+scan-hpc-tools: $(VENV)
+	. $(VENV) && mkdir -p output && python3 scan-hrp-projects.py > $(SCANNED_DATA)
+
+update-hdx: $(VENV)
+	. $(VENV) && python3 make-hrp-datasets.py $(SCANNED_DATA)
 
 build-venv: $(VENV)
 
