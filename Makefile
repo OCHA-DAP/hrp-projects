@@ -16,6 +16,8 @@ SCRIPT=make-hrp-datasets.py
 
 SCANNED_DATA=output/hrp-scan.json
 
+all: scan-hpc-tools update-hdx
+
 run: $(VENV)
 	. $(VENV) && python $(SCRIPT)
 
