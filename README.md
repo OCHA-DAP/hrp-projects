@@ -10,9 +10,9 @@ JSON file that can be provided as input to a second script that
 updates or creates datasets on HDX, with Quick Charts.
 
 
-# Usage
+## Usage
 
-## Running commands individually
+### Running commands individually
 
     $ cp config.py.TEMPLATE config.py
     $ vi config.py # add your CKAN authentication token
@@ -21,7 +21,7 @@ updates or creates datasets on HDX, with Quick Charts.
     $ python3 scan-hrp-projects.py > output/hrp-scan.json
     $ python3 make-hrp-datasets.py output/hrp-scan.json
     
-## Using the Makefile
+### Using the Makefile
 
 There is also a Makefile that will handle the last two steps (and set
 up a dedicated Python3 virtual environment for running the script):
@@ -31,7 +31,7 @@ up a dedicated Python3 virtual environment for running the script):
     $ make all
 
 
-# Quick Charts
+## Quick Charts
 
 The script will default Quick Sets to all datasets. If you want to
 change the Quick Charts, you can set up one model the way you want,
@@ -46,18 +46,18 @@ script to propagage the change, with the following parameters.
 **Model:** the dataset ID of the model dataset (e.g. "``hrp-projects-nga``")
 
 
-# Requirements
+## Requirements
 
 This script requires Python3, and the ckanapi and requests
 packages. See [requirements.txt](requirements.txt) for any recent changes.
 
 
-# License
+## License
 
 This script is in the Public Domain, and comes with NO WARRANTY. See
 [UNLICENSE.md](UNLICENSE.md) for details.
 
 
-# Author
+## Author
 
 Started 2019-04 by David Megginson.
