@@ -42,10 +42,11 @@ def get_existing_packages(crawler):
 
     packages = {}
 
-    for package in crawler.packages(fq='organization:ocha-fts'):
+    for package in crawler.packages(fq='organization:ocha-fts humanitarian response plan'):
         name = package['name']
         if re.match(r'^hrp-projects-[a-z]{3}$', name):
             packages[name] = package
+        
 
     return packages
 
@@ -145,6 +146,7 @@ def save_dataset (ckan, package, existing_package):
     # compare resources
     existing_resources = set()
     new_resources = set()
+
     for resource in package['resources']:
         existing_resources.add(resource['url'])
     for resource in existing_package['resources']:
@@ -158,10 +160,13 @@ def save_dataset (ckan, package, existing_package):
     # otherwise, update the existing package with the new resources
     existing_package['resources'] = package['resources']
     ckan.call_action('package_update', existing_package)
+    add_quickcharts(crawler.ckan, package['name'])
     logger.info("Updated existing dataset %s", package['name'])
     
 
 def add_quickcharts (ckan, package_id):
+    """ Add Quick Charts to an HRP Projects dataset """
+    
     package = ckan.action.package_show(id=package_id)
     resource_id = package['resources'][0]['id']
 
