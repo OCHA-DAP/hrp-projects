@@ -60,4 +60,4 @@ This script is in the Public Domain, and comes with NO WARRANTY. See
 
 # Author
 
-Started 2020 by David Megginson.
+Started 2019-04 by David Megginson.
