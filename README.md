@@ -1,3 +1,5 @@
+# DEPRECATED - Script discontinued
+
 Generate HRP project datasets
 =============================
 
